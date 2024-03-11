@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "opyration"
-version = "0.0.8"
+version = "0.1.1"
 description = "Execute SQL Statements as a series of pythonic functions."
 authors = ["Raymond Ortserga <ortserga@gmail.com>"]
 license = "MIT"

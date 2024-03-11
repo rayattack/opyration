@@ -26,11 +26,15 @@ class Operation(object):
         self.__page = 0
 
     def _parameterize(self, **pairs):
+        self.__vals = []
         keys, vals = [], []
-        [(keys.append(k), vals.append(v)) for k, v in pairs.items()]
-        self.__vals = vals
-        placeholder = self._placeholders(keys)
-        return keys, placeholder
+        for k, v in pairs.items():
+            keys.append(k)
+            if isinstance(v, Safe): vals.append(v.sql)
+            else:
+                vals.append(f'${len(vals) + 1}')
+                self.__vals.append(v)
+        return keys, vals
 
     @staticmethod
     def _placeholders(keys):
@@ -114,14 +118,23 @@ class Operation(object):
     def insert(self, **pairs):
         if self.__vals or self.__sql: raise ValueError('Operations can not be reused...')
         keys, placeholders = self._parameterize(**pairs)  # parameterize saves vals and returns keys and placeholders
-        self.__sql = f'''INSERT INTO {self.__schema}{self.__table} ({', '.join(keys)}) VALUES ({placeholders})'''
+        self.__sql = f'''INSERT INTO {self.__schema}{self.__table} ({', '.join(keys)}) VALUES ({', '.join(placeholders)})'''
+        return self
+    
+    def __join(self, join_type, **conditions):
+        for key, value in conditions.items():
+            table, column = key.split('__')
+            self.__sql = f'{self.__sql} {join_type} {self.__schema}{table} ON {table}.{column}={value}'
         return self
 
     def join(self, **conditions):
-        for key, value in conditions.items():
-            table, column = key.split('__')
-            self.__sql = f'{self.__sql} JOIN {self.__schema}{table} ON {table}.{column}={value}'
-        return self
+        return self.__join('JOIN', **conditions)
+    
+    def left_join(self, **conditions):
+        return self.__join('LEFT JOIN', **conditions)
+    
+    def right_join(self, **conditions):
+        return self.__join('RIGHT JOIN', **conditions)
 
     def limit(self, limit: int):
         self.__sql = f'{self.__sql} LIMIT {limit}'
@@ -257,7 +270,7 @@ class Operation(object):
             except: field, op = field_op, 'eq'
             sym = SYMBOLS[op]
             clause = 'WHERE' if index == 0 else 'AND'
-            suffix = f"{clause} {field}{sym}{placeholder}"
+            suffix = f"{clause} {field} {sym} {placeholder}"
             if isinstance(value, Operation): value = f'({value.sql})'
             self.__vals.append(value)
             self.__sql = f'{self.__sql} {suffix}'
