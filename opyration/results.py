@@ -54,7 +54,8 @@ class Results(object):
         self.__count = index
 
     def row(self, n: int):
-        try: return Lookup(dict(self.__queue[n]))
+        if n < 1: n = 1
+        try: return Lookup(dict(self.__queue[n - 1]))
         except: return None
 
     def rows(self, n: int):

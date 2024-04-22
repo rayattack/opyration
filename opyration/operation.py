@@ -23,7 +23,6 @@ class Operation(object):
         self.__asking = False
         self.__affected = 0
         self.__results = None
-        self.__page = 0
 
     def _parameterize(self, **pairs):
         self.__vals = []
@@ -116,11 +115,11 @@ class Operation(object):
         return self
 
     def insert(self, **pairs):
-        if self.__vals or self.__sql: raise ValueError('Operations can not be reused...')
+        if (self.__vals or self.__sql) and not self.__cte: raise ValueError('Operations can not be reused...')
         keys, placeholders = self._parameterize(**pairs)  # parameterize saves vals and returns keys and placeholders
-        self.__sql = f'''INSERT INTO {self.__schema}{self.__table} ({', '.join(keys)}) VALUES ({', '.join(placeholders)})'''
+        self.__sql = f'''{self.__sql or ''}INSERT INTO {self.__schema}{self.__table} ({', '.join(keys)}) VALUES ({', '.join(placeholders)})'''
         return self
-    
+
     def __join(self, join_type, **conditions):
         for key, value in conditions.items():
             table, column = key.split('__')
@@ -129,7 +128,7 @@ class Operation(object):
 
     def join(self, **conditions):
         return self.__join('JOIN', **conditions)
-    
+
     def left_join(self, **conditions):
         return self.__join('LEFT JOIN', **conditions)
     
@@ -138,6 +137,11 @@ class Operation(object):
 
     def limit(self, limit: int):
         self.__sql = f'{self.__sql} LIMIT {limit}'
+        return self
+
+    def offset(self, offset: int):
+        self.__sql = f'{self.__sql} OFFSET {offset}'
+        return self
 
     def or_where(self, **pairs):
         start = len(self.__vals)
@@ -166,10 +170,18 @@ class Operation(object):
     def raw(self, sql: str):
         self.__sql = sql
         return self
+    
+    @property
+    def values(self):
+        return self.__vals
+    
+    @values.setter
+    def values(self, *values):
+        self.__vals = values
 
-    def refresh(self):
+    def refresh(self, schema=False):
         self.__page = 0
-        self.__schema = ''
+        self.__schema = '' if schema else self.__schema
         self.__cols = None
         self.__vals = None
         self.__sql = None

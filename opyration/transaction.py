@@ -14,7 +14,7 @@ class Transaction(object):
     async def commit(self):
         async with self._pool.acquire() as connection:
             # for some reason transaction is None
-            async with connection.transaction() as transaction:
-                print('type of transaction', type(transaction))
+            async with connection.transaction():
                 for op in self._ops:
-                    op.results = await connection.execute(op.sql, *op.parameters)
+                    if op.fetching: op.results = await connection.fetch(op.sql, *op.parameters)
+                    else: op.results = await connection.execute(op.sql, *op.parameters)
