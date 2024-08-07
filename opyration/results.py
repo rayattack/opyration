@@ -31,7 +31,7 @@ class Lookup(dict):
 class Results(object):
     def __init__(self, data: list):
         self.__data = data
-        self.__queue = deque(data)
+        self.__queue = deque(data or [])
         self.__count = 0
 
     def __bool__(self):

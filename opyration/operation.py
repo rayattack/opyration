@@ -115,7 +115,7 @@ class Operation(object):
         return self
 
     def insert(self, **pairs):
-        if (self.__vals or self.__sql) and not self.__cte: raise ValueError('Operations can not be reused...')
+        if (self.__vals or self.__sql): raise ValueError('Operations can not be reused...')
         keys, placeholders = self._parameterize(**pairs)  # parameterize saves vals and returns keys and placeholders
         self.__sql = f'''{self.__sql or ''}INSERT INTO {self.__schema}{self.__table} ({', '.join(keys)}) VALUES ({', '.join(placeholders)})'''
         return self
@@ -174,10 +174,10 @@ class Operation(object):
     @property
     def values(self):
         return self.__vals
-    
-    @values.setter
+
     def values(self, *values):
         self.__vals = values
+        return self
 
     def refresh(self, schema=False):
         self.__page = 0
@@ -227,9 +227,13 @@ class Operation(object):
     async def execute(self, sql: str, *vals):
         return await self.__command(sql, *vals)
 
-    async def fetch(self, sql: str, *vals):
+    async def query(self, sql: str, *vals):
         self.__asking = True
-        return await self.__command(sql, *vals)
+        return await self.execute(sql, *vals)
+
+    async def fetch(self):
+        self.__asking = True
+        return await self.run()
 
     async def __command(self, sql: str, *vals):
         async with self.__pool.acquire() as connection:
