@@ -23,6 +23,7 @@ class Operation(object):
         self.__asking = False
         self.__affected = 0
         self.__results = None
+        self.__commands = set()
 
     def _parameterize(self, **pairs):
         self.__vals = []
@@ -55,6 +56,13 @@ class Operation(object):
         self.__sql = f'{self.__sql} ORDER BY {", ".join(columns)} ASC'
         return self
 
+    def asc(self, *columns):
+        ORDER_BY = ', ' if 'desc' in self.__commands else ' ORDER BY '
+        if 'asc' in self.__commands: raise ValueError('Order by asc already set')
+        self.__sql = f'{self.__sql}{ORDER_BY}{", ".join(columns)} ASC'
+        self.__commands.add('asc')
+        return self
+
     @property
     def columns(self):
         return self.__cols
@@ -64,7 +72,10 @@ class Operation(object):
         self.__cols = ', '.join(cols)
 
     def desc(self, *columns):
-        self.__sql = f'{self.__sql} ORDER BY {", ".join(columns)} DESC'
+        ORDER_BY = ', ' if 'asc' in self.__commands else ' ORDER BY '
+        if 'desc' in self.__commands: raise ValueError('Order by desc already set')
+        self.__sql = f'{self.__sql}{ORDER_BY}{", ".join(columns)} DESC'
+        self.__commands.add('desc')
         return self
 
     @property
@@ -150,7 +161,7 @@ class Operation(object):
             try: field, op = field_op.split('__')
             except: field, op = field_op, 'eq'
             sym = SYMBOLS[op]
-            suffix = f"OR {field}{sym}{placeholder}"
+            suffix = f"OR {field} {sym} {placeholder}"
             if isinstance(value, Operation): value = f'({value.sql})'
             self.__vals.append(value)
             self.__sql = f'{self.__sql} {suffix}'

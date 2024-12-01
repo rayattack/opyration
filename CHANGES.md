@@ -1,3 +1,7 @@
+# Version 0.2.4
+- Fix: order by desc, asc repeats the `ORDER BY` command and no seperation when both commands used
+- Fix: the `OR WHERE` command fails due to lack of space between command and names - fix this error
+
 # Version 0.2.2
 - Fix: opyration.results no longer throws an error when result data set is `None`
 
