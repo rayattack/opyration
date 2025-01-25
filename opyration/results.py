@@ -40,12 +40,12 @@ class Results(object):
     def data(self):
         return self.__data
 
-    def next(self):
+    def next(self) -> Lookup | None:
         try: return Lookup(self.__queue[self.__count])
         except: return None
         finally: self.__count += 1
 
-    def pop(self):
+    def pop(self) -> Lookup | None:
         try: datum = self.__queue.popleft()
         except IndexError: return None
         else: return Lookup(dict(datum))
@@ -58,6 +58,6 @@ class Results(object):
         try: return Lookup(dict(self.__queue[n - 1]))
         except: return None
 
-    def rows(self, n: int):
+    def rows(self, n: int) -> list[Lookup]:
         if n > len(self.__queue): n = len(self.__queue)
         return [self.pop() for _ in range(n)]

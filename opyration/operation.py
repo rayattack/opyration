@@ -1,3 +1,5 @@
+from typing import deprecated
+
 from .interfaces import Pool
 from .results import Results
 from .symbols import SYMBOLS
@@ -15,7 +17,7 @@ class Safe(object):
 class Operation(object):
     def __init__(self, table: str, pool: Pool = None, schema=''):
         self.__table = table
-        self.__schema = f'{schema}.' if schema else '' 
+        self.__schema = f'{schema}.' if schema else ''
         self.__pool = pool
         self.__cols = None
         self.__vals = None
@@ -85,7 +87,7 @@ class Operation(object):
     @property
     def json(self):
         return [dict(datum) for datum in self.__results]
-    
+
     @property
     def fetching(self):
         return self.__asking
@@ -142,7 +144,7 @@ class Operation(object):
 
     def left_join(self, **conditions):
         return self.__join('LEFT JOIN', **conditions)
-    
+
     def right_join(self, **conditions):
         return self.__join('RIGHT JOIN', **conditions)
 
@@ -181,7 +183,7 @@ class Operation(object):
     def raw(self, sql: str):
         self.__sql = sql
         return self
-    
+
     @property
     def values(self):
         return self.__vals
@@ -217,6 +219,7 @@ class Operation(object):
         return self
 
     async def run(self):
+        '''Automatically infer if it is a query or execution i.e. fetch or do'''
         async with self.__pool.acquire() as connection:
             async with connection.transaction() as transaction:
                 if self.__asking:
@@ -236,13 +239,17 @@ class Operation(object):
         self.__schema = f'{schema}.'
 
     async def execute(self, sql: str, *vals):
+        '''Execute an sql command with provided params'''
         return await self.__command(sql, *vals)
 
     async def query(self, sql: str, *vals):
+        '''Execute an sql retrieval command i.e. you want data back'''
         self.__asking = True
         return await self.execute(sql, *vals)
 
+    @deprecated
     async def fetch(self):
+        '''Deprecated, use run, execute, or query'''
         self.__asking = True
         return await self.run()
 
@@ -282,6 +289,19 @@ class Operation(object):
         self.__sql = f'{self.__sql} {", ".join(equations)}'
         return self
 
+    def __not_yet_completed__conflict(self, **pairs):
+        # parameterize saves vals and returns keys and placeholders
+        keys, placeholders = self._parameterize(**pairs)  
+        self.__sql = f'''
+            {self.__sql} ON CONFLICT ({', '.join(keys)})
+        '''
+
+    def __not_yet_completed__do(self, **values):
+        if values:
+            self.__sql = f'''{self.__sql} DO update
+            SET '''
+        return self
+        
     def where(self, **conditions):
         # get length already in vars and add to index
         start = len(self.__vals)
